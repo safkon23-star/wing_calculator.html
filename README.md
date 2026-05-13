@@ -1,1 +1,349 @@
-# wing_calculator.html
+html
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Аэроакустика крыла — калькулятор K(L)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f4f8;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1300px;
+            width: 100%;
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 25px 30px 35px 30px;
+        }
+        h1 {
+            font-size: 1.6rem;
+            color: #1a3a5c;
+            margin-top: 0;
+            border-left: 5px solid #2c7da0;
+            padding-left: 18px;
+        }
+        .subtitle {
+            color: #5e7f97;
+            margin-bottom: 25px;
+            padding-left: 23px;
+            font-size: 0.9rem;
+        }
+        .two-columns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+        }
+        .left-panel {
+            flex: 1;
+            min-width: 280px;
+            background: #f8fafd;
+            padding: 20px;
+            border-radius: 24px;
+        }
+        .right-panel {
+            flex: 1.5;
+            min-width: 350px;
+        }
+        .slider-area {
+            background: white;
+            border-radius: 20px;
+            padding: 18px;
+            margin-bottom: 20px;
+            border: 1px solid #e2edf2;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 5px;
+            background: #cbdde6;
+            border-radius: 5px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #2c7da0;
+            cursor: pointer;
+        }
+        .angle-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-align: center;
+            color: #2c7da0;
+            margin-top: 10px;
+        }
+        .results {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .result-card {
+            flex: 1;
+            background: white;
+            border-radius: 18px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #e2edf2;
+        }
+        .result-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+        .noise-value { color: #1f77b4; }
+        .quality-value { color: #2ca02c; }
+        .info-note {
+            background: #eef3fa;
+            border-radius: 16px;
+            padding: 12px;
+            font-size: 0.8rem;
+            color: #1e4a6e;
+            margin: 15px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #cbdde6;
+            padding: 6px;
+            text-align: center;
+        }
+        th {
+            background: #e2edf2;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 20px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #e2edf2;
+        }
+        footer {
+            margin-top: 25px;
+            font-size: 0.7rem;
+            text-align: center;
+            color: #8aaec0;
+            border-top: 1px solid #e2edf2;
+            padding-top: 15px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>✈️ Аэроакустика стреловидного крыла</h1>
+    <div class="subtitle">Веб-калькулятор: расчёт шума L(χ) и качества K(χ) + график компромисса K(L)</div>
+
+    <div class="two-columns">
+        <!-- Левая панель: управление -->
+        <div class="left-panel">
+            <div class="slider-area">
+                <label><strong>📐 Угол стреловидности χ:</strong></label>
+                <input type="range" id="angleSlider" min="0" max="45" step="1" value="20">
+                <div class="angle-value" id="angleDisplay">20°</div>
+            </div>
+
+            <div class="results">
+                <div class="result-card">
+                    <div>🔊 Уровень шума L</div>
+                    <div class="result-value noise-value" id="noiseValue">--</div>
+                    <div>дБ</div>
+                </div>
+                <div class="result-card">
+                    <div>📈 Качество K</div>
+                    <div class="result-value quality-value" id="qualityValue">--</div>
+                    <div>безразм.</div>
+                </div>
+            </div>
+
+            <div class="info-note">
+                <strong>📌 Оптимальный компромисс: χ = 18° – 22°</strong><br>
+                При χ = 20° → шум ≈ 72.0 дБ, качество ≈ 16.6<br>
+                ▶ График справа показывает зависимость <strong>K(L)</strong> — как качество падает при росте шума.<br>
+                🔴 Красная точка — текущий режим.
+            </div>
+
+            <table>
+                <caption>Справочные значения</caption>
+                <tr><th>χ</th><th>0°</th><th>10°</th><th>20°</th><th>30°</th><th>40°</th><th>45°</th></tr>
+                <tr><td>L (дБ)</td><td id="t0">70.0</td><td id="t10">--</td><td id="t20">--</td><td id="t30">76.3</td><td id="t40">--</td><td id="t45">85.0</td></tr>
+                <tr><td>K</td><td id="k0">18.00</td><td id="k10">--</td><td id="k20">--</td><td id="k30">15.14</td><td id="k40">--</td><td id="k45">11.52</td></tr>
+            </table>
+        </div>
+
+        <!-- Правая панель: график K(L) -->
+        <div class="right-panel">
+            <div class="chart-container">
+                <canvas id="klChart" width="500" height="400" style="max-width:100%; height:auto;"></canvas>
+                <div style="font-size:0.7rem; text-align:center; margin-top:8px;">Зависимость аэродинамического качества K от уровня шума L</div>
+            </div>
+        </div>
+    </div>
+    <footer>
+        Формулы: L = 70 + 15·(χ/45)^2.5 | K = 18·cos(χ)·(1 – 0.1·(χ/45)²) | График K(L) — параметрическая кривая (χ от 0° до 45°)
+    </footer>
+</div>
+
+<script>
+    // ----- 1. Формулы (строго по проекту) -----
+    function calcNoise(chi) {
+        return 70 + 15 * Math.pow(chi / 45, 2.5);
+    }
+    function calcQuality(chi) {
+        const rad = chi * Math.PI / 180;
+        return 18 * Math.cos(rad) * (1 - 0.1 * Math.pow(chi / 45, 2));
+    }
+
+    // ----- 2. Генерация данных для графика K(L) (χ от 0 до 45, шаг 0.5°) -----
+    const angles = [];
+    const noiseVals = [];
+    const qualityVals = [];
+    for (let chi = 0; chi <= 45; chi += 0.5) {
+        const L = calcNoise(chi);
+        const K = calcQuality(chi);
+        angles.push(chi);
+        noiseVals.push(L);
+        qualityVals.push(K);
+    }
+
+    // Данные для графика K(L): массив точек {x: L, y: K}
+    const klData = noiseVals.map((L, idx) => ({ x: L, y: qualityVals[idx] }));
+
+    // ----- 3. DOM элементы -----
+    const slider = document.getElementById('angleSlider');
+    const angleDisplay = document.getElementById('angleDisplay');
+    const noiseSpan = document.getElementById('noiseValue');
+    const qualitySpan = document.getElementById('qualityValue');
+
+    // Заполнение таблицы
+    const refAngles = [0, 10, 20, 30, 40, 45];
+    refAngles.forEach(chi => {
+        const L = calcNoise(chi);
+        const K = calcQuality(chi);
+        const noiseCell = document.getElementById(`t${chi}`);
+        const qualCell = document.getElementById(`k${chi}`);
+        if (noiseCell) noiseCell.innerText = L.toFixed(1);
+        if (qualCell) qualCell.innerText = K.toFixed(2);
+    });
+
+    // ----- 4. Создание графика K(L) (Chart.js, scatter) -----
+    const ctx = document.getElementById('klChart').getContext('2d');
+    
+    // Глобальная переменная для текущей точки
+    let currentPointDatasetIndex = -1;
+    
+    let chart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [
+                {
+                    label: 'K(L) — зависимость качества от шума',
+                    data: klData,
+                    borderColor: '#2c7da0',
+                    backgroundColor: 'rgba(44, 125, 160, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    showLine: true,
+                    tension: 0.2,
+                    order: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const point = context.raw;
+                            return `L = ${point.x.toFixed(1)} дБ, K = ${point.y.toFixed(2)}`;
+                        }
+                    }
+                },
+                legend: { position: 'top' }
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: 'Уровень шума L (дБ)', font: { weight: 'bold' } },
+                    min: 68,
+                    max: 88,
+                    grid: { color: '#e2edf2' }
+                },
+                y: {
+                    title: { display: true, text: 'Аэродинамическое качество K', font: { weight: 'bold' } },
+                    min: 10,
+                    max: 19,
+                    grid: { color: '#e2edf2' }
+                }
+            }
+        }
+    });
+
+    // Функция обновления красной точки на графике K(L)
+    function updateRedDot(angle) {
+        const Lcur = calcNoise(angle);
+        const Kcur = calcQuality(angle);
+        
+        // Найти датасет с красной точкой
+        const redIndex = chart.data.datasets.findIndex(ds => ds.label === '🔴 Текущий режим');
+        
+        if (redIndex !== -1) {
+            // Обновить существующую точку
+            chart.data.datasets[redIndex].data = [{ x: Lcur, y: Kcur }];
+        } else {
+            // Добавить новый датасет с красной точкой
+            chart.data.datasets.push({
+                label: '🔴 Текущий режим',
+                data: [{ x: Lcur, y: Kcur }],
+                borderColor: '#e63946',
+                backgroundColor: '#e63946',
+                pointRadius: 8,
+                pointHoverRadius: 10,
+                pointBorderColor: 'white',
+                pointBorderWidth: 2,
+                type: 'scatter',
+                showLine: false,
+                order: 1
+            });
+        }
+        chart.update();
+    }
+
+    // ----- 5. Обновление UI при движении ползунка -----
+    function updateUI(angle) {
+        const rounded = Math.round(angle * 10) / 10;
+        angleDisplay.innerText = rounded + '°';
+        const L = calcNoise(angle);
+        const K = calcQuality(angle);
+        noiseSpan.innerText = L.toFixed(1);
+        qualitySpan.innerText = K.toFixed(2);
+        
+        // Обновить красную точку на графике K(L)
+        updateRedDot(angle);
+    }
+
+    slider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        updateUI(val);
+    });
+
+    // Стартовое значение 20°
+    updateUI(20);
+</script>
+</body>
+</html>
